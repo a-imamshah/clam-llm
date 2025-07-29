@@ -12,7 +12,7 @@ from sentence_transformers import SentenceTransformer, util
 # === CONFIG ===
 JSON_PATH = "train.json"
 FEATURES_DIR = "/mnt/NAS_AI/ahmed/reg2025/hibou_features/pt_files"
-MODEL_PATH = "clam_report_model.pt"
+MODEL_PATH = "../trained_models/clam_report_model_20250728_175537.pt"
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 # === Load Model + Tokenizer ===

@@ -9,7 +9,8 @@ class CLAMReportDataset(Dataset):
         self.tokenizer = tokenizer
         self.max_tokens = max_tokens
         self.device = device
-
+        
+        print(f"The json path: {json_path}")
         with open(json_path, 'r') as f:
             self.samples = json.load(f)
 
@@ -33,7 +34,7 @@ class CLAMReportDataset(Dataset):
                 })
             else:
                 skipped += 1
-
+        
         print(f"[INFO] Loaded {len(self.valid_samples)} valid samples.")
         print(f"[INFO] Skipped {skipped} samples with missing features.")
 
