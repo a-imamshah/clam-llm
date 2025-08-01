@@ -8,17 +8,13 @@ from extract_features_modular import extract_features_hibou
 import argparse
 
 # === CONFIG ===
-WSI_PATH = "/mnt/NAS_AI/ahmed/reg2025/reg2025_wsi"  # folder with .tiff
-PATCH_SAVE_DIR = "/mnt/NAS_AI/ahmed/reg2025/hibou_patches"
-FEATURE_SAVE_DIR = "/mnt/NAS_AI/ahmed/reg2025/hibou_features"
-MODEL_PATH = "../trained_models/clam_report_model_20250728_175537.pt"
-DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+WSI_PATH = "../data/reg2025_wsi"  # folder with .tiff
+PATCH_SAVE_DIR = "../data/reg2025_patches"
+FEATURE_SAVE_DIR = "../data/reg2025_features"
+# MODEL_PATH will now be determined by parser argument
+TRAINED_MODELS_DIR = "../data/trained_models" # Base directory where models are stored
 
-# === Initialize model + tokenizer ===
-tokenizer = T5Tokenizer.from_pretrained("t5-small")
-model = CLAMReportGenerator(t5_model_name="t5-small").to(DEVICE)
-model.load_state_dict(torch.load(MODEL_PATH))
-model.eval()
+DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 # === Helper Function ===
 def ensure_features(slide_id):
@@ -32,12 +28,10 @@ def ensure_features(slide_id):
 
     # Step 1: Extract patches (assumes you have a function for this)
     wsi_file = os.path.join(WSI_PATH, f"{slide_id}.tiff")
-            # patch_output_dir = os.path.join(PATCH_SAVE_DIR, slide_id)
     os.makedirs(PATCH_SAVE_DIR, exist_ok=True)
-    extract_patches(wsi_file, PATCH_SAVE_DIR)  # creates .h5 patches from wsi, and saves it to patch_output_dir
+    extract_patches(wsi_file, PATCH_SAVE_DIR)
 
     # Step 2: Extract features with Hibou-L
-    
     extract_features_hibou(
     data_h5_path=os.path.join(PATCH_SAVE_DIR, f"{slide_id}.h5"),
     slide_path=wsi_file,
@@ -48,9 +42,10 @@ def ensure_features(slide_id):
     return feature_file
 
 # === Main Entry ===
-def generate_report(slide_id):
+# Now accepts the 'model' object as an argument
+def generate_report(slide_id, model):
     feature_path = ensure_features(slide_id)
-    patch_features = torch.load(feature_path).to(DEVICE)  # shape [N_patches, 1024]
+    patch_features = torch.load(feature_path, map_location=DEVICE).to(DEVICE)
 
     with torch.no_grad():
         report = model.generate(patch_features)
@@ -61,16 +56,26 @@ def generate_report(slide_id):
 
 parser = argparse.ArgumentParser(description='Generate a report, given a Whole Slide Image')
 parser.add_argument('-s','--slide_ID', help='The ID (name) of the WSI', default="PIT_01_00002_01")
+# Add a new argument for the model name
+parser.add_argument('-m', '--model_name', help='Name of the model .pt file inside the trained_models/ directory', default="clam_report_model_20250728_175537.pt")
+
 
 if __name__ == "__main__":
     args = parser.parse_args()
 
-    # if len(sys.argv) != 2:
-    #     print("Usage: python generate_report.py PIT_01_00002_01")
-    #     sys.exit(1)
+    # Define MODEL_PATH using the parsed argument
+    MODEL_PATH = os.path.join(TRAINED_MODELS_DIR, args.model_name)
 
-    #slide_id = sys.argv[1].replace(".tiff", "")
+    # Initialize tokenizer and model here, after MODEL_PATH is determined
+    tokenizer = T5Tokenizer.from_pretrained("t5-small")
+    
+    # The 'model' variable needs to be local to this scope now
+    loaded_model = CLAMReportGenerator(t5_model_name="t5-small").to(DEVICE)
+    loaded_model.load_state_dict(torch.load(MODEL_PATH, map_location=DEVICE))
+    loaded_model.eval()
 
     slide_id = args.slide_ID.replace(".tiff", "")
     print(f"[INFO] Generatng report for the slide: {slide_id}")
-    generate_report(slide_id)
+    
+    # Pass the loaded_model instance to the generate_report function
+    generate_report(slide_id, loaded_model)

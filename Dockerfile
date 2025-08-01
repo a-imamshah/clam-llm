@@ -18,14 +18,14 @@ ENV PYTHONUNBUFFERED=1
 
 WORKDIR /app
 
-# Install build essentials and openslide development libraries
-# These are needed for packages like openslide-python which compile C extensions
-# and depend on system-level libraries.
+# Install build essentials, openslide development libraries, and libGL1
+# These are needed for packages like openslide-python and opencv-python.
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
     gcc \
     libopenslide-dev \
     pkg-config \
+    libgl1 \
     # Clean up apt caches to keep image size down
     && rm -rf /var/lib/apt/lists/*
 
